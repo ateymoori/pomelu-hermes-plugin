@@ -1,0 +1,9 @@
+name: pomelu
+version: 1.0.0
+description: "Messages Hermes sends on its own (reminders, scheduled jobs, reports) go to the Pomelu app's Bot Chat, where the app notifies the user."
+author: "AmirHossein Teymoori (Royan AB)"
+license: Apache-2.0
+homepage: https://github.com/ateymoori/pomelu-hermes-plugin
+requires_hermes: ">=0.22"
+provides_hooks:
+  - pre_tool_call
