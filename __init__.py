@@ -3,13 +3,17 @@
 Pomelu talks to each bot in its Bot Chat as a ``gui`` session. Such a session
 has no messaging origin, so a cron job made there (a reminder, "every day at
 7") went to a Telegram home channel or nowhere. This plugin routes those jobs
-back into the Bot Chat (``deliver='bot-chat'``), where Pomelu notifies the
-user, and tells the agent how to reach the user later.
+back into the Bot Chat (``deliver='bot-chat'``) and tells the agent how to
+reach the user later. A reply in a Bot Chat then rings the phone through
+push (``push.py``), also while the app is closed.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import logging
+import sys
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -83,6 +87,45 @@ def _prompt(info: Any) -> str:
     return PROMPT if session_source(info.get("session_id")) == APP_SOURCE else ""
 
 
+def load_push():
+    """``push.py``, shared with the dashboard routes (one module per process)."""
+    name = "pomelu_push"
+    module = sys.modules.get(name)
+    if module is None:
+        spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name("push.py"))
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        spec.loader.exec_module(module)
+    return module
+
+
+def _on_reply(**kwargs: Any) -> None:
+    load_push().on_reply(**kwargs)
+
+
+def _cli_setup(parser) -> None:
+    sub = parser.add_subparsers(dest="pomelu_command")
+    sub.add_parser("setup", help="Turn the plugin on for every bot (profile)")
+    sub.add_parser("status", help="Show the phones that get push messages")
+
+
+def _cli(args) -> None:
+    push = load_push()
+    if getattr(args, "pomelu_command", None) == "setup":
+        done = push.enable_everywhere()
+        print(f"Turned on for: {', '.join(done)}" if done else "Every bot already has the Pomelu plugin.")
+        return
+    devices = push.load_devices()
+    print(f"{len(devices)} phone(s) get push messages; relay {push.RELAY_URL}")
+    for device_id, d in devices.items():
+        print(f"  {device_id}  {d.get('platform')}  {'open' if d.get('visible') else 'away'}")
+    missing = push.profiles_without_plugin()
+    if missing:
+        print(f"Bots without the plugin: {', '.join(missing)} (run: hermes pomelu setup)")
+
+
 def register(ctx) -> None:
     ctx.register_hook("pre_tool_call", _pre_tool_call)
+    ctx.register_hook("post_llm_call", _on_reply)
     ctx.register_system_prompt_section("pomelu.delivery", _prompt)
+    ctx.register_cli_command("pomelu", "Pomelu app: push messages to phones", _cli_setup, _cli)

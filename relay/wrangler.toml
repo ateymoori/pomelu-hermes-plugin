@@ -1,0 +1,18 @@
+name = "pomelu-push"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[vars]
+APNS_KEY_ID = "3828ZBQC2P"
+APNS_TEAM_ID = "59XUWMG2BT"
+APNS_TOPIC = "se.royan.pomelu"
+
+# Per device token: a Hermes that loops cannot flood a phone.
+[[ratelimits]]
+name = "LIMIT"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }
+
+# Secrets (wrangler secret put): APNS_KEY (the .p8 text),
+# FCM_SERVICE_ACCOUNT (the service account JSON).

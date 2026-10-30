@@ -1,0 +1,9 @@
+{
+  "name": "pomelu-push",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/relay.test.js",
+    "deploy": "wrangler deploy"
+  }
+}
