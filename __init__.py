@@ -113,7 +113,14 @@ def _cli(args) -> None:
     push = load_push()
     if getattr(args, "pomelu_command", None) == "setup":
         done = push.enable_everywhere()
-        print(f"Turned on for: {', '.join(done)}" if done else "Every bot already has the Pomelu plugin.")
+        missing = push.profiles_without_plugin()
+        if done:
+            print(f"Turned on for: {', '.join(done)}")
+        if missing:
+            print(f"Could not turn on for: {', '.join(missing)} (see agent.log)")
+            raise SystemExit(1)
+        if not done:
+            print("Every bot already has the Pomelu plugin.")
         return
     devices = push.load_devices()
     print(f"{len(devices)} phone(s) get push messages; relay {push.RELAY_URL}")

@@ -17,6 +17,8 @@ hermes plugins install ateymoori/pomelu-hermes-plugin --enable
 hermes pomelu setup
 ```
 
+To update: `hermes plugins update pomelu`, then `hermes pomelu setup`.
+
 `setup` turns the plugin on for every bot (Hermes turns a plugin on per
 profile). Then restart Hermes (`hermes serve`, the gateway service, or the
 Hermes desktop app). Nothing else to set up: no account, no keys. Pomelu

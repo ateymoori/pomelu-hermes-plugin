@@ -150,6 +150,21 @@ def test_setup_turns_the_plugin_on_for_bots_that_lack_it(home, monkeypatch):
                         lambda argv, **_: calls.append(argv) or type("R", (), {"returncode": 0})())
     assert push.enable_everywhere() == ["atlas"]
     assert calls[0][-5:-1] == ["atlas", "plugins", "enable", "pomelu"]
+    # Without the link in its own folder, the bot's Hermes does not know the plugin.
+    assert (home / "profiles" / "atlas" / "plugins" / "pomelu").resolve() == _root
+    assert not (home / "profiles" / "quiet" / "plugins").exists()
+
+
+def test_setup_says_which_bots_it_could_not_turn_on(home, monkeypatch, capsys):
+    (home / "profiles" / "atlas").mkdir(parents=True)
+    (home / "profiles" / "atlas" / "config.yaml").write_text("plugins:\n  enabled: []\n")
+    monkeypatch.setattr(push.subprocess, "run",
+                        lambda *_, **__: type("R", (), {"returncode": 1, "stderr": "", "stdout": "no such plugin"})())
+    plugin = _load("pomelu_plugin", _root / "__init__.py")
+    monkeypatch.setattr(plugin, "load_push", lambda: push)
+    with pytest.raises(SystemExit):
+        plugin._cli(type("Args", (), {"pomelu_command": "setup"})())
+    assert "Could not turn on for: atlas" in capsys.readouterr().out
 
 
 def test_the_app_routes(home, monkeypatch):

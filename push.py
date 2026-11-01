@@ -289,11 +289,24 @@ def profiles_without_plugin() -> list[str]:
     return missing
 
 
+def _link_plugin(plugins_dir: Path) -> None:
+    """A profile only sees the plugins in its own folder, and the install puts
+    this one in the root's: Hermes cannot turn it on there without a link."""
+    link = plugins_dir / PLUGIN
+    if link.exists() or link.is_symlink():
+        return
+    plugins_dir.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(Path(__file__).resolve().parent, target_is_directory=True)
+
+
 def enable_everywhere() -> list[str]:
     """Turns the plugin on for every bot that lacks it, with Hermes' own
     command; a bot that turned it off stays off. Returns the bots turned on."""
+    from hermes_constants import get_default_hermes_root
+
     done = []
     for profile in profiles_without_plugin():
+        _link_plugin(get_default_hermes_root() / "profiles" / profile / "plugins")
         result = subprocess.run(
             [sys.executable, "-m", "hermes_cli.main", "-p", profile, "plugins", "enable", PLUGIN,
              "--no-allow-tool-override"],
@@ -302,5 +315,7 @@ def enable_everywhere() -> list[str]:
             done.append(profile)
             logger.info("pomelu: turned on for bot %s", profile)
         else:
-            logger.warning("pomelu: could not turn on for bot %s: %s", profile, result.stderr.strip()[-300:])
+            # Hermes prints why on stdout.
+            reason = (result.stderr or result.stdout or "").strip()[-300:]
+            logger.warning("pomelu: could not turn on for bot %s: %s", profile, reason)
     return done

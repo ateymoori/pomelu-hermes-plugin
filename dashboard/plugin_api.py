@@ -17,7 +17,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Body, HTTPException
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
