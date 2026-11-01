@@ -52,6 +52,27 @@ const verifyJwt = async (jwt, key, algorithm) => {
 
 beforeEach(resetTokens);
 
+test('every new isolate uses the same APNs token', async () => {
+  const stored = new Map();
+  const TOKENS = {
+    get: async (key) => JSON.parse(stored.get(key) ?? 'null'),
+    put: async (key, value) => stored.set(key, value),
+  };
+  const net = fakeNetwork([200, {}], [200, {}]);
+  const send = () => handle(post({ platform: 'ios', token: iosToken, data: 'eA==' }), { ...env, TOKENS }, net.fetcher);
+  await send();
+  resetTokens();
+  await send();
+  assert.equal(net.calls[0].init.headers.authorization, net.calls[1].init.headers.authorization);
+});
+
+test('a broken token store does not stop a push', async () => {
+  const TOKENS = { get: async () => { throw new Error('down'); }, put: async () => { throw new Error('down'); } };
+  const net = fakeNetwork([200, {}]);
+  const res = await handle(post({ platform: 'ios', token: iosToken, data: 'eA==' }), { ...env, TOKENS }, net.fetcher);
+  assert.equal(res.status, 200);
+});
+
 test('an iOS push goes to APNs, signed with the team key, sealed text inside', async () => {
   const net = fakeNetwork([200, {}]);
   const res = await handle(post({ platform: 'ios', token: iosToken, data: 'c2VhbGVk', collapse: 'abc123' }), env, net.fetcher);

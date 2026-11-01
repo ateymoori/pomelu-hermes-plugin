@@ -11,14 +11,12 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
-import logging
 import sys
 from pathlib import Path
 
 from fastapi import APIRouter, Body, HTTPException
 
-VERSION = "1.1.1"
-logger = logging.getLogger(__name__)
+VERSION = "1.1.2"
 router = APIRouter()
 
 
@@ -46,10 +44,7 @@ async def put_device(device_id: str, body: dict = Body(...)):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     # A bot made later (from the app too) gets the plugin on the phone's next visit.
-    try:
-        await asyncio.to_thread(push.enable_everywhere)
-    except Exception:
-        logger.warning("pomelu: could not turn the plugin on for every bot", exc_info=True)
+    push.enable_everywhere_soon()
     return {"ok": True, "version": VERSION}
 
 

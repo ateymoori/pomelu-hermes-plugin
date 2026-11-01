@@ -33,11 +33,13 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 PLUGIN = "pomelu"
+_enabling = threading.Lock()
 RELAY_URL = os.environ.get("POMELU_PUSH_URL", "https://pomelu-push.teymoori-net.workers.dev/v1/push")
 # The canonical chat Pomelu shows for a bot (and its compacted parts).
 BOT_CHAT_TITLE = re.compile(r"^Bot Chat( #\d+)?$")
 # A phone that said "open" and went quiet this long ago is away.
-STALE_VISIBLE_S = 10 * 60
+STALE_VISIBLE_S = 3 * 60
+RETRY_AFTER_S = 2
 PREVIEW_CHARS = 240
 MEDIA_PREFIX = "MEDIA:"
 RELAY_TIMEOUT_S = 15
@@ -206,8 +208,8 @@ def _session_row(home: Path, session_id: str) -> dict[str, Any] | None:
 
 
 def on_reply(session_id: str = "", assistant_response: Any = None, **_: Any) -> None:
-    """``post_llm_call``: a finished reply. Pushes when it is a Bot Chat's and
-    no phone has the app open. Sending runs off the agent's thread."""
+    """``post_llm_call``: a finished reply. A Bot Chat's goes to each phone
+    without the app open. Sending runs off the agent's thread."""
     if not session_id or not str(assistant_response or "").strip():
         return
     devices = {i: d for i, d in load_devices().items() if is_away(d, time.time())}
@@ -231,7 +233,14 @@ def on_reply(session_id: str = "", assistant_response: Any = None, **_: Any) -> 
 
 def send_all(devices: dict[str, dict[str, Any]], message: dict[str, Any], profile: str) -> None:
     for device_id, device in devices.items():
-        status = send(device, message, profile)
+        try:
+            status = send(device, message, profile)
+            if status == 0 or status >= 500:
+                time.sleep(RETRY_AFTER_S)
+                status = send(device, message, profile)
+        except KeyError:
+            logger.warning("pomelu: phone %s has a broken entry", device_id)
+            continue
         if status == 410:
             logger.info("pomelu: phone %s is gone (app removed or token renewed); forgetting it", device_id)
             remove_device(device_id)
@@ -297,6 +306,23 @@ def _link_plugin(plugins_dir: Path) -> None:
         return
     plugins_dir.mkdir(parents=True, exist_ok=True)
     link.symlink_to(Path(__file__).resolve().parent, target_is_directory=True)
+
+
+def enable_everywhere_soon() -> None:
+    """Off the caller's thread, one run at a time: one Hermes command per bot
+    can take minutes, and a phone must not wait for it."""
+    if not _enabling.acquire(blocking=False):
+        return
+
+    def run() -> None:
+        try:
+            enable_everywhere()
+        except Exception:
+            logger.warning("pomelu: could not turn the plugin on for every bot", exc_info=True)
+        finally:
+            _enabling.release()
+
+    threading.Thread(target=run, daemon=True, name="pomelu-enable").start()
 
 
 def enable_everywhere() -> list[str]:

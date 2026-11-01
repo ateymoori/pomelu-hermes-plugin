@@ -88,6 +88,14 @@ def test_a_bot_chat_reply_rings_an_away_phone_sealed_with_its_key(home, relay):
     assert _opened(sent) == {"v": 1, "bot": "default", "title": "Atlas", "body": "Time to stretch!"}
 
 
+def test_a_relay_that_fails_gets_one_more_try(home, relay, monkeypatch):
+    monkeypatch.setattr(push, "RETRY_AFTER_S", 0)
+    relay.status = 502
+    _phone()
+    push.on_reply(session_id="chat", assistant_response="hi")
+    assert len(relay.received) == 2
+
+
 def test_no_push_while_the_app_is_open(home, relay):
     _phone(visible=True)
     push.on_reply(session_id="chat", assistant_response="hi")
@@ -172,7 +180,7 @@ def test_the_app_routes(home, monkeypatch):
     from fastapi.testclient import TestClient
 
     api = _load("pomelu_api", _root / "dashboard" / "plugin_api.py")
-    monkeypatch.setattr(push, "enable_everywhere", lambda: [])
+    monkeypatch.setattr(push, "enable_everywhere_soon", lambda: None)
     import sys
 
     monkeypatch.setitem(sys.modules, "pomelu_push", push)

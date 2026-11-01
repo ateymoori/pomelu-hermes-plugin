@@ -14,5 +14,10 @@ name = "LIMIT"
 namespace_id = "1001"
 simple = { limit = 30, period = 60 }
 
+# One APNs token for all isolates: Apple refuses frequent new ones.
+[[kv_namespaces]]
+binding = "TOKENS"
+id = "8a1d92393cd34aed997043e9cf4f3ba1"
+
 # Secrets (wrangler secret put): APNS_KEY (the .p8 text),
 # FCM_SERVICE_ACCOUNT (the service account JSON).

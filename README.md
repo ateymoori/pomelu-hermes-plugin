@@ -32,9 +32,9 @@ finds the plugin on its next connection and registers the phone.
   (`telegram`, `local`, `all`, ...) stays.
 - **The bot knows.** In Pomelu chats the bot is told that a scheduled job is
   the way to message you later, and that `send_message` cannot reach the app.
-- **The phone rings.** When a bot answers in its Bot Chat and no phone has
-  Pomelu open, each registered phone gets a push notification with the
-  bot's name and the start of the answer. A tap opens that bot's chat.
+- **The phone rings.** When a bot answers in its Bot Chat, each registered
+  phone without Pomelu open gets a push notification with the bot's name and
+  the start of the answer. A tap opens that bot's chat.
 - **New bots too.** Each time Pomelu registers, bots made since then get the
   plugin turned on (a bot where you turned it off stays off).
 

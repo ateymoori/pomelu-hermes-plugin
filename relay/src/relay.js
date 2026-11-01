@@ -56,8 +56,19 @@ export async function handle(request, env, fetcher = fetch) {
 
 let apnsJwt = null;
 
+/**
+ * Apple refuses a new token more often than once in 20 minutes
+ * (TooManyProviderTokenUpdates), and each new isolate starts empty, so the
+ * token is shared through KV.
+ */
 async function apnsToken(env) {
-  if (apnsJwt && Date.now() - apnsJwt.at < APNS_JWT_TTL_MS) return apnsJwt.value;
+  const fresh = (token) => token && Date.now() - token.at < APNS_JWT_TTL_MS;
+  if (fresh(apnsJwt)) return apnsJwt.value;
+  const shared = await env.TOKENS?.get('apns-jwt', 'json').catch(() => null);
+  if (fresh(shared)) {
+    apnsJwt = shared;
+    return shared.value;
+  }
   const key = await importPkcs8(env.APNS_KEY, { name: 'ECDSA', namedCurve: 'P-256' });
   const value = await signJwt(
     { alg: 'ES256', kid: env.APNS_KEY_ID },
@@ -66,6 +77,7 @@ async function apnsToken(env) {
     { name: 'ECDSA', hash: 'SHA-256' },
   );
   apnsJwt = { value, at: Date.now() };
+  await env.TOKENS?.put('apns-jwt', JSON.stringify(apnsJwt), { expirationTtl: 3600 }).catch(() => {});
   return value;
 }
 
