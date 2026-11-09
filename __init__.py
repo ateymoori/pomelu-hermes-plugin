@@ -30,7 +30,10 @@ PROMPT = (
     "day at 7\", a report when a long task ends), create a cron job: it is "
     "delivered into this chat (deliver='bot-chat'). The send_message tool "
     "cannot reach this chat. Deliver to another platform only when the user "
-    "asks for it."
+    "asks for it. When the user leaves the app, this chat is released: "
+    "background processes and async subagents you started here stop. For work "
+    "that runs on after your reply, run it detached and add a cron job that "
+    "checks it and reports here; never promise a later update without one."
 )
 
 
